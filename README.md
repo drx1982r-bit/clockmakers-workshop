@@ -2,6 +2,10 @@
 
 An interactive 3D cinematic experience made in Blender. It is a 60-second film plus a version you can explore yourself.
 
+**Try it in your browser:** <https://drx1982r-bit.github.io/clockmakers-workshop/> (no install needed)
+
+**Download the project:** click the green **Code** button above, then **Download ZIP**.
+
 The last light of evening streams through dusty windows into an old clockmaker's workshop. A long-case astronomical clock winds itself and starts ticking. Its orrery comes to life, the lamp flickers on, and the clock strikes the hour.
 
 ---
