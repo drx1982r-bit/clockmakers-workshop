@@ -1,0 +1,12 @@
+{
+  "name": "clockmakers-workshop-viewer",
+  "private": true,
+  "description": "Browser version of The Clockmaker's Workshop. Build: npm install && npm run build",
+  "scripts": {
+    "build": "esbuild main.js --bundle --format=iife --minify --target=es2020 --outfile=../viewer.js"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.10",
+    "three": "0.180.0"
+  }
+}

@@ -1,0 +1,4 @@
+web_viewer/src/node_modules/
+renders/frames/
+__pycache__/
+*.blend1

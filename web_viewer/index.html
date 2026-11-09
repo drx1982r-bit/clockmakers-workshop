@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Clockmaker's Workshop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0806; --panel: rgba(18, 13, 9, 0.78); --line: rgba(232, 196, 140, 0.18);
+    --text: #f1e6d2; --muted: #b9a88e; --gold: #e2b56a; --gold-2: #f6d49a;
+    --serif: 'Cormorant Garamond', Georgia, serif; --sans: 'Inter', system-ui, sans-serif;
+  }
+  :root:not([data-theme="light"]) { color-scheme: dark; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0b0806; } }
+  :root[data-theme="dark"] { --bg: #0b0806; }
+  :root[data-theme="light"] { --bg: #0b0806; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); overflow: hidden; }
+  canvas#view { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; touch-action: none; }
+  button, select, input { font: inherit; color: inherit; }
+  .glass { background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-radius: 14px; }
+
+  /* loading */
+  #loading { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: radial-gradient(ellipse at 30% 40%, #2a1a0c 0%, #0b0806 65%); transition: opacity 1.2s ease; }
+  #loading.gone { opacity: 0; pointer-events: none; }
+  .intro { text-align: center; padding: 24px; max-width: 640px; }
+  .intro .eyebrow { letter-spacing: 0.32em; text-transform: uppercase; font-size: 12px; color: var(--muted); }
+  .intro h1 { font-family: var(--serif); font-weight: 500; font-size: clamp(38px, 7vw, 74px); line-height: 1.02; margin: 14px 0 10px; color: var(--gold-2); }
+  .intro h1 em { color: var(--text); font-style: italic; }
+  .intro p { color: var(--muted); line-height: 1.6; margin: 0 auto 28px; max-width: 460px; }
+  #enter { opacity: 0; pointer-events: none; transition: opacity 0.6s; padding: 14px 34px; border-radius: 999px; border: 1px solid var(--gold); background: linear-gradient(180deg, rgba(226,181,106,0.22), rgba(226,181,106,0.05)); color: var(--gold-2); cursor: pointer; letter-spacing: 0.08em; font-size: 15px; }
+  #enter:hover { background: rgba(226,181,106,0.3); }
+  #loading.ready #enter { opacity: 1; pointer-events: auto; }
+  #loadmsg { margin-top: 18px; font-size: 13px; color: var(--muted); min-height: 1.2em; }
+  .gear-spin { width: 46px; height: 46px; margin: 0 auto 6px; animation: spin 6s linear infinite; opacity: 0.85; }
+  #loading.ready .gear-spin { animation-duration: 18s; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* top bar */
+  #top { position: fixed; top: 16px; left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; pointer-events: none; z-index: 5; }
+  #brand { padding: 10px 16px; pointer-events: auto; }
+  #brand .t { font-family: var(--serif); font-size: 20px; color: var(--gold-2); line-height: 1.1; }
+  #brand .s { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  #fps { font-size: 11px; color: var(--muted); padding: 6px 10px; pointer-events: auto; }
+
+  /* caption */
+  #caption { position: fixed; left: 50%; top: 18%; transform: translate(-50%, 10px); text-align: center; opacity: 0; transition: opacity 1s ease, transform 1s ease; pointer-events: none; z-index: 4; text-shadow: 0 2px 24px rgba(0,0,0,0.8); padding: 0 16px; width: 100%; }
+  #caption.show { opacity: 1; transform: translate(-50%, 0); }
+  #caption h2 { font-family: var(--serif); font-weight: 500; font-size: clamp(30px, 5vw, 52px); margin: 0; color: var(--gold-2); }
+  #caption p { margin: 6px 0 0; color: var(--text); font-size: 14px; letter-spacing: 0.04em; }
+
+  /* control bar */
+  #bar { position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 5; padding: 12px 14px 10px; }
+  #timeline { position: relative; height: 26px; cursor: pointer; margin: 0 4px 8px; touch-action: none; }
+  #timeline .track { position: absolute; left: 0; right: 0; top: 11px; height: 4px; border-radius: 4px; background: rgba(255,255,255,0.12); overflow: hidden; }
+  #progress { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: linear-gradient(90deg, #a8742f, var(--gold-2)); }
+  .chap { position: absolute; top: 5px; width: 3px; height: 16px; margin-left: -1px; border: 0; padding: 0; background: rgba(241,230,210,0.35); border-radius: 2px; cursor: pointer; }
+  .chap.on { background: var(--gold); }
+  .chap span { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 11px; color: var(--muted); opacity: 0; transition: opacity .2s; pointer-events: none; }
+  #timeline:hover .chap span { opacity: 1; }
+  .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .btn { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255,255,255,0.04); display: grid; place-items: center; cursor: pointer; padding: 0; }
+  .btn:hover { border-color: var(--gold); }
+  .btn svg { width: 20px; height: 20px; fill: var(--text); }
+  .btn.big { width: 46px; height: 46px; border-radius: 50%; background: rgba(226,181,106,0.18); border-color: var(--gold); }
+  .btn.off svg { fill: #8a6f5a; }
+  #time { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--muted); min-width: 96px; }
+  #chapter { font-family: var(--serif); font-size: 18px; color: var(--gold-2); margin-right: auto; }
+  select { background: rgba(255,255,255,0.05); border: 1px solid var(--line); border-radius: 10px; height: 38px; padding: 0 10px; max-width: 240px; }
+  select option { background: #1a120c; }
+  label.mini { font-size: 11px; color: var(--muted); display: flex; flex-direction: column; gap: 2px; }
+
+  /* audio + help + info panels */
+  #audiopanel { position: fixed; right: 16px; bottom: 132px; width: 250px; padding: 14px; display: none; z-index: 6; }
+  #audiopanel.open { display: block; }
+  #audiopanel h3, #info h3 { margin: 0 0 10px; font-family: var(--serif); font-weight: 500; font-size: 20px; color: var(--gold-2); }
+  .slider { display: grid; grid-template-columns: 74px 1fr; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); margin: 6px 0; }
+  input[type=range] { accent-color: var(--gold); width: 100%; }
+  #info { position: fixed; right: 16px; top: 84px; width: min(320px, calc(100vw - 32px)); padding: 16px; z-index: 6; transform: translateX(120%); transition: transform .45s cubic-bezier(.2,.8,.2,1); }
+  #info.open { transform: none; }
+  #info p { margin: 0 0 12px; line-height: 1.55; color: var(--text); font-size: 14px; }
+  #info .actions { display: flex; gap: 8px; }
+  .pill { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,0.05); cursor: pointer; font-size: 13px; }
+  .pill:hover { border-color: var(--gold); }
+  #help { position: fixed; inset: 0; z-index: 30; display: none; place-items: center; background: rgba(0,0,0,0.55); padding: 16px; }
+  #help.open { display: grid; }
+  #help .card { padding: 22px 24px; max-width: 460px; width: 100%; }
+  #help h3 { margin: 0 0 12px; font-family: var(--serif); font-weight: 500; font-size: 24px; color: var(--gold-2); }
+  #help table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  #help td { padding: 6px 0; border-bottom: 1px solid var(--line); }
+  #help td:first-child { color: var(--gold); width: 42%; }
+  kbd { font-family: var(--sans); font-size: 12px; padding: 1px 6px; border: 1px solid var(--line); border-radius: 5px; }
+
+  @media (max-width: 720px) {
+    #bar { left: 8px; right: 8px; bottom: 8px; padding: 10px; }
+    #top { left: 8px; right: 8px; top: 8px; }
+    #chapter { width: 100%; order: -1; font-size: 16px; }
+    select { max-width: 150px; font-size: 13px; }
+    #audiopanel { right: 8px; bottom: 170px; }
+    #fps { display: none; }
+  }
+</style>
+</head>
+<body>
+<canvas id="view"></canvas>
+
+<div id="loading">
+  <div class="intro">
+    <svg class="gear-spin" viewBox="0 0 100 100" aria-hidden="true"><path fill="#e2b56a" d="M50 30a20 20 0 1 0 0 40 20 20 0 0 0 0-40zm0 10a10 10 0 1 1 0 20 10 10 0 0 1 0-20zM45 2h10l2 12 8 3 10-7 7 7-7 10 3 8 12 2v10l-12 2-3 8 7 10-7 7-10-7-8 3-2 12H45l-2-12-8-3-10 7-7-7 7-10-3-8-12-2V45l12-2 3-8-7-10 7-7 10 7 8-3z"/></svg>
+    <div class="eyebrow">An interactive cinematic</div>
+    <h1>The Clockmaker's <em>Workshop</em> at Dusk</h1>
+    <p>The last light of evening falls across an old workshop. On the wall, a great astronomical clock is waiting to wake.</p>
+    <button id="enter">Enter the workshop</button>
+    <div id="loadmsg">Loading...</div>
+  </div>
+</div>
+
+<div id="top">
+  <div id="brand" class="glass"><div class="t">The Clockmaker's Workshop</div><div class="s">Click objects to inspect &middot; <kbd>?</kbd> for controls</div></div>
+  <div id="fps" class="glass">-- fps</div>
+</div>
+
+<div id="caption"><h2></h2><p></p></div>
+
+<aside id="info" class="glass">
+  <h3 id="infoname">Object</h3>
+  <p id="infotext"></p>
+  <div class="actions"><button class="pill" id="focusbtn">Look closer</button><button class="pill" id="closeinfo">Close</button></div>
+</aside>
+
+<div id="audiopanel" class="glass">
+  <h3>Sound</h3>
+  <div class="slider">Master<input type="range" id="v_master" min="0" max="1" step="0.01"></div>
+  <div class="slider">Music<input type="range" id="v_music" min="0" max="1" step="0.01"></div>
+  <div class="slider">Ambience<input type="range" id="v_ambience" min="0" max="1" step="0.01"></div>
+  <div class="slider">Effects<input type="range" id="v_sfx" min="0" max="1" step="0.01"></div>
+</div>
+
+<div id="help"><div class="card glass">
+  <h3>Controls</h3>
+  <table>
+    <tr><td><kbd>Space</kbd></td><td>Play / pause</td></tr>
+    <tr><td><kbd>R</kbd></td><td>Restart</td></tr>
+    <tr><td><kbd>1</kbd> &ndash; <kbd>5</kbd></td><td>Jump to a sequence</td></tr>
+    <tr><td><kbd>&larr;</kbd> <kbd>&rarr;</kbd></td><td>Skip 2 seconds</td></tr>
+    <tr><td><kbd>&uarr;</kbd> <kbd>&darr;</kbd></td><td>Faster / slower</td></tr>
+    <tr><td><kbd>F</kbd> / <kbd>C</kbd></td><td>Free camera / cinematic camera</td></tr>
+    <tr><td>Drag</td><td>Orbit (free camera)</td></tr>
+    <tr><td>Scroll / pinch</td><td>Zoom</td></tr>
+    <tr><td>Right-drag</td><td>Pan</td></tr>
+    <tr><td>Click</td><td>Inspect an object</td></tr>
+  </table>
+</div></div>
+
+<div id="bar" class="glass">
+  <div id="timeline"><div class="track"><div id="progress"></div></div></div>
+  <div class="row">
+    <button class="btn big" id="play" title="Play (Space)"></button>
+    <button class="btn" id="restart" title="Restart (R)"><svg viewBox="0 0 24 24"><path d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg></button>
+    <span id="time">0:00.0 / 1:00.0</span>
+    <span id="chapter"></span>
+    <select id="camsel" title="Camera"></select>
+    <select id="speed" title="Speed">
+      <option value="0.25">0.25&times;</option><option value="0.5">0.5&times;</option><option value="1" selected>1&times; speed</option>
+      <option value="1.5">1.5&times;</option><option value="2">2&times;</option>
+    </select>
+    <select id="quality" title="Quality">
+      <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="ultra">Ultra</option>
+    </select>
+    <button class="btn" id="mute" title="Mute"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 5V4L8 9H4zm12.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z"/></svg></button>
+    <button class="btn" id="audiobtn" title="Sound mixer"><svg viewBox="0 0 24 24"><path d="M6 3h2v8h2v2H4v-2h2zm0 12h2v6H6zm5-12h2v3h2v2H9V6h2zm0 7h2v11h-2zm5-7h2v11h2v2h-6v-2h2zm0 15h2v3h-2z"/></svg></button>
+    <button class="btn" id="helpbtn" title="Controls (?)"><svg viewBox="0 0 24 24"><path d="M11 18h2v-2h-2v2zm1-16a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm0-14a4 4 0 0 0-4 4h2a2 2 0 1 1 4 0c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5a4 4 0 0 0-4-4z"/></svg></button>
+    <button class="btn" id="fullscreen" title="Full screen"><svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg></button>
+  </div>
+</div>
+
+<script src="data/scene_data.js"></script>
+<script src="viewer.js"></script>
+<script>
+  document.addEventListener('keydown', function (e) { if (e.key === '?') document.getElementById('help').classList.toggle('open'); });
+</script>
+</body>
+</html>
